@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Defense the Kingdom Quest</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#1a1a2e;color:#eee;font-family:'Press Start 2P',monospace;font-size:10px;min-height:100vh}
+#app{max-width:980px;margin:0 auto;padding:8px}
+h1{text-align:center;color:#ffd700;font-size:12px;text-shadow:2px 2px #b8860b;margin:6px 0 2px;line-height:1.7}
+.subtitle{text-align:center;color:#aaa;font-size:7px;margin-bottom:3px}
+.screen{display:none}.screen.active{display:block}
+
+/* TITLE */
+#title-screen{text-align:center;padding:14px 10px}
+.diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:500px;margin:14px auto 0}
+.diff-btn{padding:12px 8px;border:3px solid;border-radius:4px;cursor:pointer;font-family:'Press Start 2P',monospace;font-size:8px;background:#111;transition:transform .1s}
+.diff-btn:hover{transform:scale(1.04)}
+.diff-btn.easy{border-color:#4caf50;color:#4caf50}
+.diff-btn.normal{border-color:#2196f3;color:#2196f3}
+.diff-btn.hard{border-color:#ff9800;color:#ff9800}
+.diff-btn.vhard{border-color:#f44336;color:#f44336}
+.diff-btn.load{border-color:#ce93d8;color:#ce93d8;grid-column:1/-1;margin-top:6px}
+.diff-btn .dlabel{font-size:10px;display:block;margin-bottom:5px}
+.diff-btn .ddesc{font-size:7px;color:#aaa;line-height:1.6}
+
+/* GAME */
+#game-screen{display:none}
+#game-screen.active{display:grid;grid-template-columns:1fr 270px;gap:8px}
+canvas{display:block;border:3px solid #ffd700;image-rendering:pixelated;max-width:100%}
+#sidebar{background:#111;border:2px solid #333;border-radius:4px;padding:8px;display:flex;flex-direction:column;gap:5px}
+.stitle{color:#ffd700;font-size:8px;border-bottom:1px solid #333;padding-bottom:3px}
+#gold-bar{background:#1a1a2e;border:1px solid #ffd700;padding:6px;border-radius:3px;font-size:9px;color:#ffd700;text-align:center}
+#turn-info{background:#1a1a2e;border:1px solid #444;padding:6px;border-radius:3px;font-size:7px;line-height:2}
+#unit-info{background:#1a1a2e;border:1px solid #444;padding:6px;border-radius:3px;font-size:7px;line-height:2;min-height:68px}
+#log{background:#0a0a0a;border:1px solid #333;padding:5px;border-radius:3px;font-size:6.5px;line-height:1.9;height:110px;overflow-y:auto;color:#ccc}
+.log-p{color:#4fc3f7}.log-a{color:#ef9a9a}.log-e{color:#ffd700}
+.brow{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:2px}
+.gbtn{padding:7px 3px;border:2px solid #3949ab;background:#1a237e;color:#fff;font-family:'Press Start 2P',monospace;font-size:6.5px;cursor:pointer;border-radius:3px;text-align:center}
+.gbtn:hover:not(:disabled){background:#283593}
+.gbtn:disabled{opacity:.35;cursor:not-allowed}
+.gbtn.gshop{border-color:#ffd700;color:#ffd700;background:#2a2000}
+.gbtn.gshop:hover:not(:disabled){background:#3a2e00}
+.gbtn.gsave{border-color:#a5d6a7;color:#a5d6a7;background:#0a2a0a}
+.gbtn.gload{border-color:#ce93d8;color:#ce93d8;background:#1a0a2a}
+#save-status{font-size:6px;text-align:center;min-height:12px;margin-top:1px}
+
+/* SHOP */
+#shop-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:100;align-items:flex-start;justify-content:center;padding:16px 8px;overflow-y:auto}
+#shop-modal.show{display:flex}
+#shop-box{background:#1a1a2e;border:3px solid #ffd700;border-radius:6px;padding:12px;width:100%;max-width:520px}
+#shop-gold{color:#ffd700;font-size:9px;margin-bottom:10px;text-align:center}
+.ssec{margin-bottom:12px}
+.ssectitle{color:#ffd700;font-size:7.5px;margin-bottom:6px;border-bottom:1px solid #333;padding-bottom:3px}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.sitem{background:#111;border:2px solid #444;border-radius:4px;padding:8px 5px;cursor:pointer;text-align:center;transition:border-color .15s}
+.sitem:hover:not(.sdis){border-color:#ffd700}
+.sdis{opacity:.4;cursor:not-allowed}
+.sicon{font-size:18px;display:block;margin-bottom:3px}
+.sname{font-size:7px;color:#eee;display:block;margin-bottom:2px}
+.scost{font-size:6.5px;color:#ffd700;display:block}
+.sdesc{font-size:6px;color:#aaa;margin-top:3px;line-height:1.6;text-align:left}
+#shop-close{display:block;width:100%;padding:8px;background:#333;border:2px solid #555;color:#eee;font-family:'Press Start 2P',monospace;font-size:7.5px;cursor:pointer;border-radius:3px;margin-top:6px}
+#shop-close:hover{background:#444}
+
+/* TRIVIA */
+#trivia-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:200;align-items:center;justify-content:center}
+#trivia-modal.show{display:flex}
+#trivia-box{background:#1a1a2e;border:3px solid #ffd700;border-radius:6px;padding:16px;max-width:450px;width:92%;text-align:center}
+#tri-ctx{font-size:7.5px;color:#aaa;margin-bottom:3px}
+#tri-icon{font-size:24px;margin-bottom:5px}
+#tri-lbl{color:#ffd700;font-size:8px;margin-bottom:10px}
+#tri-q{font-size:8px;color:#eee;line-height:1.9;margin-bottom:12px}
+#tri-opts{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.topt{padding:9px 4px;background:#111;border:2px solid #555;color:#eee;font-family:'Press Start 2P',monospace;font-size:7px;cursor:pointer;border-radius:3px;line-height:1.6}
+.topt:hover:not(:disabled){border-color:#ffd700;color:#ffd700}
+.topt.tcor{border-color:#4caf50;background:#1b5e20;color:#a5d6a7}
+.topt.twrong{border-color:#f44336;background:#b71c1c;color:#ef9a9a}
+#tri-res{font-size:8px;min-height:16px;margin-bottom:6px}
+#tri-cont{display:none;padding:7px 14px;background:#283593;border:2px solid #ffd700;color:#ffd700;font-family:'Press Start 2P',monospace;font-size:7px;cursor:pointer;border-radius:3px}
+
+/* WIN */
+#win-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:300;align-items:center;justify-content:center;text-align:center}
+#win-modal.show{display:flex}
+#win-box{background:#1a1a2e;border:3px solid #ffd700;border-radius:6px;padding:26px 16px;max-width:360px;width:92%}
+#win-icon{font-size:42px;margin-bottom:8px}
+#win-msg{color:#ffd700;font-size:12px;margin-bottom:6px}
+#win-sub{color:#aaa;font-size:7px;margin-bottom:14px;line-height:1.9}
+#win-again{padding:10px 16px;background:#1a237e;border:2px solid #ffd700;color:#ffd700;font-family:'Press Start 2P',monospace;font-size:8px;cursor:pointer;border-radius:3px}
+</style>
+</head>
+<body>
+<div id="app">
+<h1>⚔️ DEFENSE THE KINGDOM QUEST ⚔️</h1>
+<div class="subtitle">Defensed by Anna La &amp; Johnny La</div>
+<div class="subtitle">Retro Strategy + Trivia Battle</div>
+
+<div id="title-screen" class="screen active">
+  <p style="color:#aaa;font-size:7px;margin-top:10px">Choose trivia difficulty to begin!</p>
+  <div class="diff-grid">
+    <button class="diff-btn easy" onclick="startGame('easy')"><span class="dlabel">🟢 EASY</span><span class="ddesc">Simple math &amp; basic facts</span></button>
+    <button class="diff-btn normal" onclick="startGame('normal')"><span class="dlabel">🔵 NORMAL</span><span class="ddesc">Multiplication &amp; science</span></button>
+    <button class="diff-btn hard" onclick="startGame('hard')"><span class="dlabel">🟠 HARD</span><span class="ddesc">Fractions &amp; history</span></button>
+    <button class="diff-btn vhard" onclick="startGame('very hard')"><span class="dlabel">🔴 VERY HARD</span><span class="ddesc">Multi-step &amp; advanced</span></button>
+    <button class="diff-btn load" onclick="loadGame(true)"><span class="dlabel">📂 LOAD SAVED GAME</span><span class="ddesc">Continue your last session</span></button>
+  </div>
+  <p style="color:#555;font-size:6.5px;margin-top:12px">Answer trivia to attack, buy &amp; upgrade!</p>
+</div>
+
+<div id="game-screen" class="screen">
+  <div><canvas id="cv" width="540" height="540"></canvas></div>
+  <div id="sidebar">
+    <div class="stitle">⚔️ DEFENSE THE KINGDOM</div>
+    <div id="gold-bar">💰 Gold: <span id="gdis">0</span></div>
+    <div id="turn-info"></div>
+    <div class="stitle">Selected</div>
+    <div id="unit-info">Click a unit to select it.</div>
+    <div class="stitle">Battle Log</div>
+    <div id="log"></div>
+    <div class="brow">
+      <button class="gbtn gshop" id="shop-btn" onclick="openShop()">🏪 SHOP</button>
+      <button class="gbtn" id="etbtn" onclick="endPlayerTurn()">END TURN ▶</button>
+    </div>
+    <div class="brow">
+      <button class="gbtn gsave" onclick="saveGame()">💾 SAVE</button>
+      <button class="gbtn gload" onclick="loadGame(false)">📂 LOAD</button>
+    </div>
+    <div id="save-status"></div>
+  </div>
+</div>
+
+<div id="shop-modal">
+  <div id="shop-box">
+    <div id="shop-gold"></div>
+    <div class="ssec"><div class="ssectitle">🧑‍🌾 Farmers (max 3)</div><div id="sf"></div></div>
+    <div class="ssec"><div class="ssectitle">⚔️ Buy Soldiers</div><div class="sgrid" id="ss"></div></div>
+    <div class="ssec" id="su-sec" style="display:none"><div class="ssectitle">⬆️ Upgrade Selected Unit</div><div class="sgrid" id="su"></div></div>
+    <button id="shop-close" onclick="closeShop()">✖ CLOSE SHOP</button>
+  </div>
+</div>
+
+<div id="trivia-modal">
+  <div id="trivia-box">
+    <div id="tri-ctx"></div>
+    <div id="tri-icon"></div>
+    <div id="tri-lbl">ANSWER TO PROCEED!</div>
+    <div id="tri-q"></div>
+    <div id="tri-opts"></div>
+    <div id="tri-res"></div>
+    <button id="tri-cont" onclick="closeTri()">CONTINUE ▶</button>
+  </div>
+</div>
+
+<div id="win-modal">
+  <div id="win-box">
+    <div id="win-icon"></div>
+    <div id="win-msg"></div>
+    <div id="win-sub"></div>
+    <button id="win-again" onclick="location.reload()">PLAY AGAIN</button>
+  </div>
+</div>
+
+<script>
+// ── TRIVIA ───────────────────────────────────────────────────────────────────
+const TRIVIA={
+  easy:[
+    {q:"What is 3 + 5?",opts:["6","7","8","9"],a:2},
+    {q:"What is 10 - 4?",opts:["5","6","7","8"],a:1},
+    {q:"Mixing blue and yellow makes?",opts:["Purple","Green","Orange","Red"],a:1},
+    {q:"How many legs does a spider have?",opts:["6","8","10","4"],a:1},
+    {q:"What is 2 × 4?",opts:["6","7","8","9"],a:2},
+    {q:"Planet closest to the Sun?",opts:["Earth","Venus","Mercury","Mars"],a:2},
+    {q:"How many sides does a triangle have?",opts:["2","3","4","5"],a:1},
+    {q:"What is 15 - 7?",opts:["7","8","9","6"],a:1},
+    {q:"Largest animal on Earth?",opts:["Elephant","Blue Whale","Giraffe","Hippo"],a:1},
+    {q:"What is 4 + 9?",opts:["12","13","14","11"],a:1},
+    {q:"Months in a year?",opts:["10","11","12","13"],a:2},
+    {q:"What do bees make?",opts:["Milk","Honey","Butter","Syrup"],a:1},
+  ],
+  normal:[
+    {q:"What is 7 × 8?",opts:["54","56","58","52"],a:1},
+    {q:"Capital of France?",opts:["Rome","Madrid","Paris","Berlin"],a:2},
+    {q:"How many continents on Earth?",opts:["5","6","7","8"],a:2},
+    {q:"What is 81 ÷ 9?",opts:["7","8","9","10"],a:2},
+    {q:"Gas plants absorb from air?",opts:["Oxygen","Nitrogen","Carbon Dioxide","Hydrogen"],a:2},
+    {q:"What is 15 × 4?",opts:["55","60","65","70"],a:1},
+    {q:"Largest ocean?",opts:["Atlantic","Indian","Arctic","Pacific"],a:3},
+    {q:"What is 144 ÷ 12?",opts:["10","11","12","13"],a:2},
+    {q:"Bones in adult human body?",opts:["186","196","206","216"],a:2},
+    {q:"Chemical symbol for water?",opts:["WO","HO₂","H₂O","OX"],a:2},
+    {q:"Year WWII ended?",opts:["1943","1944","1945","1946"],a:2},
+    {q:"What is 25% of 80?",opts:["15","20","25","30"],a:1},
+  ],
+  hard:[
+    {q:"What is 3/4 + 1/2?",opts:["1","5/4","4/6","1/2"],a:1},
+    {q:"Train 60km/h for 2.5h. Distance?",opts:["120km","140km","150km","160km"],a:2},
+    {q:"Roman numeral for 49?",opts:["IL","XLIX","XLXI","XLIV"],a:1},
+    {q:"Square root of 169?",opts:["11","12","13","14"],a:2},
+    {q:"Who wrote Romeo and Juliet?",opts:["Dickens","Shakespeare","Chaucer","Austen"],a:1},
+    {q:"What is 2³ + 4²?",opts:["20","22","24","26"],a:2},
+    {q:"Columbus reached Americas in?",opts:["1488","1490","1492","1494"],a:2},
+    {q:"What is 5/8 of 120?",opts:["70","72","75","60"],a:2},
+    {q:"Chemical symbol for Iron?",opts:["Ir","In","Fe","Fi"],a:2},
+    {q:"Degrees in a right angle?",opts:["45°","60°","90°","180°"],a:2},
+    {q:"Area of 7m × 9m rectangle?",opts:["56m²","63m²","72m²","54m²"],a:1},
+    {q:"Planet with most moons?",opts:["Jupiter","Saturn","Uranus","Neptune"],a:1},
+  ],
+  "very hard":[
+    {q:"What is 17 × 23?",opts:["381","391","371","401"],a:1},
+    {q:"2.5 cups for 4 people. For 10?",opts:["5.5","6","6.25","6.5"],a:2},
+    {q:"π to 4 decimal places?",opts:["3.1415","3.1416","3.1417","3.1418"],a:1},
+    {q:"War that began in 1914?",opts:["WWI","WWII","Korean War","Vietnam War"],a:0},
+    {q:"Cube root of 512?",opts:["6","7","8","9"],a:2},
+    {q:"What is 2⁸?",opts:["128","256","512","64"],a:1},
+    {q:"Speed: 360km in 4.5h?",opts:["75","80","85","90"],a:1},
+    {q:"Sum of angles in hexagon?",opts:["540°","720°","900°","1080°"],a:1},
+    {q:"Largest country by area?",opts:["USA","China","Canada","Russia"],a:3},
+    {q:"What is 15% of 340?",opts:["48","51","54","57"],a:1},
+    {q:"Binary 1101 in decimal?",opts:["11","12","13","14"],a:2},
+    {q:"Chemical symbol for Gold?",opts:["Go","Gd","Au","Ag"],a:2},
+  ]
+};
+
+// ── FARMER LEVELS ─────────────────────────────────────────────────────────────
+const FL=[
+  {gps:1,cost:0},{gps:2,cost:15},{gps:3,cost:25},{gps:4,cost:37},{gps:6,cost:50},
+  {gps:9,cost:65},{gps:12,cost:82},{gps:15,cost:100},{gps:19,cost:120},{gps:24,cost:142},
+  {gps:29,cost:167},{gps:35,cost:195},{gps:42,cost:225},{gps:50,cost:257},{gps:59,cost:292},
+  {gps:69,cost:330},{gps:81,cost:370},{gps:95,cost:412},{gps:110,cost:457},{gps:127,cost:505}
+];
+
+// ── UNIT DEFS ─────────────────────────────────────────────────────────────────
+const UT={
+  warrior:{name:'Warrior',icon:'🗡️',hp:30,atk:8,range:1,move:2,cost:40},
+  archer:{name:'Archer',icon:'🏹',hp:20,atk:7,range:2,move:2,cost:50},
+  knight:{name:'Knight',icon:'🐴',hp:35,atk:10,range:1,move:3,cost:70},
+  mage:{name:'Mage',icon:'🔮',hp:15,atk:12,range:2,move:1,cost:60},
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let G=null, goldTick=null, uid=0, fid=0;
+
+function freshState(diff){
+  return{
+    diff, turn:'player', selected:null, moves:[], attacks:[],
+    units:[], farmers:[], aiFarmers:[],
+    gold:10, aiGold:10, log:[], aiThinking:false, gameOver:false,
+    map:buildMap()
+  };
+}
+
+function buildMap(){
+  const m=[];
+  for(let r=0;r<9;r++){m[r]=[];for(let c=0;c<9;c++)m[r][c]={t:'G'}}
+  [[2,2],[3,2],[2,4],[5,6],[6,6],[5,4],[3,6]].forEach(([r,c])=>m[r][c]={t:'F'});
+  [[4,3],[4,4],[4,5]].forEach(([r,c])=>m[r][c]={t:'M'});
+  m[7][0]={t:'castle',owner:'player'};
+  m[1][8]={t:'castle',owner:'ai'};
+  return m;
+}
+
+function mkUnit(type,owner,x,y){
+  const b=UT[type];
+  return{id:uid++,type,owner,x,y,hp:b.hp,maxHp:b.hp,atk:b.atk,move:b.move,range:b.range,moved:false,attacked:false,atkUp:0,hpUp:0,moveUp:0};
+}
+function mkFarmer(owner,x,y,level){return{id:fid++,owner,x,y,level};}
+
+// ── CANVAS ────────────────────────────────────────────────────────────────────
+const cv=document.getElementById('cv');
+const ctx=cv.getContext('2d');
+const TILE=60, ROWS=9, COLS=9;
+const TC={G:'#2d5a1b',F:'#1a4a0d',M:'#555'};
+
+function draw(){
+  if(!G)return;
+  ctx.clearRect(0,0,540,540);
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)drawTile(r,c);
+  if(G.selected&&G.selected.kind==='unit'){
+    G.moves.forEach(([mr,mc])=>{ctx.fillStyle='rgba(33,150,243,.35)';ctx.fillRect(mc*TILE,mr*TILE,TILE,TILE)});
+    G.attacks.forEach(([ar,ac])=>{ctx.fillStyle='rgba(244,67,54,.35)';ctx.fillRect(ac*TILE,ar*TILE,TILE,TILE)});
+  }
+  [...G.farmers,...G.aiFarmers].forEach(f=>drawFarmer(f));
+  G.units.filter(u=>u.hp>0).forEach(u=>drawUnit(u));
+  drawGrid();
+}
+
+function drawTile(r,c){
+  const t=G.map[r][c];
+  if(t.t==='castle') ctx.fillStyle=t.owner==='player'?'#1a237e':'#b71c1c';
+  else ctx.fillStyle=TC[t.t]||TC.G;
+  ctx.fillRect(c*TILE,r*TILE,TILE,TILE);
+  ctx.font='17px serif';ctx.textAlign='left';ctx.textBaseline='alphabetic';
+  if(t.t==='F') ctx.fillText('🌲',c*TILE+4,r*TILE+24);
+  if(t.t==='M') ctx.fillText('⛰️',c*TILE+4,r*TILE+24);
+  if(t.t==='castle'){
+    ctx.font='20px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('🏰',c*TILE+TILE/2,r*TILE+TILE/2-4);
+    ctx.fillStyle=t.owner==='player'?'#4fc3f7':'#ef9a9a';
+    ctx.font='bold 6px monospace';ctx.textBaseline='alphabetic';
+    ctx.fillText(t.owner==='player'?'YOU':'CPU',c*TILE+TILE/2,r*TILE+TILE-4);
+    ctx.textAlign='left';
+  }
+}
+
+function drawFarmer(f){
+  const cx=f.x*TILE+TILE/2, cy=f.y*TILE+TILE/2;
+  ctx.beginPath();ctx.arc(cx,cy,18,0,Math.PI*2);
+  ctx.fillStyle=f.owner==='player'?'rgba(0,80,0,.85)':'rgba(80,0,0,.85)';ctx.fill();
+  ctx.strokeStyle=f.owner==='player'?'#a5d6a7':'#ef9a9a';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.font='15px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('🧑‍🌾',cx,cy);
+  ctx.fillStyle='#ffd700';ctx.font='bold 7px monospace';ctx.textBaseline='alphabetic';
+  ctx.fillText('L'+f.level,cx,cy+22);
+  ctx.textAlign='left';
+}
+
+function drawUnit(u){
+  const b=UT[u.type];
+  const cx=u.x*TILE+TILE/2, cy=u.y*TILE+TILE/2;
+  ctx.beginPath();ctx.arc(cx,cy,21,0,Math.PI*2);
+  ctx.fillStyle=u.owner==='player'?'rgba(13,71,161,.88)':'rgba(183,28,28,.88)';ctx.fill();
+  const sel=G.selected&&G.selected.kind==='unit'&&G.selected.ref.id===u.id;
+  ctx.strokeStyle=sel?'#ffd700':u.owner==='player'?'#4fc3f7':'#ef9a9a';
+  ctx.lineWidth=sel?3:1.5;ctx.stroke();
+  ctx.globalAlpha=u.moved&&u.attacked?.45:1;
+  ctx.font='17px serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(b.icon,cx,cy);ctx.globalAlpha=1;
+  const tot=u.atkUp+u.hpUp+u.moveUp;
+  if(tot>0){ctx.fillStyle='#ffd700';ctx.font='bold 7px monospace';ctx.textBaseline='alphabetic';ctx.fillText('★'+tot,cx,cy-22);}
+  const bw=TILE-10,bh=4,bx=u.x*TILE+5,by=u.y*TILE+TILE-7;
+  ctx.fillStyle='#333';ctx.fillRect(bx,by,bw,bh);
+  ctx.fillStyle=u.hp/u.maxHp>.5?'#4caf50':u.hp/u.maxHp>.25?'#ff9800':'#f44336';
+  ctx.fillRect(bx,by,bw*(u.hp/u.maxHp),bh);
+  ctx.textAlign='left';
+}
+
+function drawGrid(){
+  ctx.strokeStyle='rgba(255,255,255,.08)';ctx.lineWidth=.5;
+  for(let i=0;i<=ROWS;i++){ctx.beginPath();ctx.moveTo(0,i*TILE);ctx.lineTo(COLS*TILE,i*TILE);ctx.stroke()}
+  for(let i=0;i<=COLS;i++){ctx.beginPath();ctx.moveTo(i*TILE,0);ctx.lineTo(i*TILE,ROWS*TILE);ctx.stroke()}
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function unitAt(r,c){return G.units.find(u=>u.hp>0&&u.y===r&&u.x===c)||null}
+function pFarmerAt(r,c){return G.farmers.find(f=>f.y===r&&f.x===c)||null}
+function aFarmerAt(r,c){return G.aiFarmers.find(f=>f.y===r&&f.x===c)||null}
+function pUnits(){return G.units.filter(u=>u.owner==='player'&&u.hp>0)}
+function aUnits(){return G.units.filter(u=>u.owner==='ai'&&u.hp>0)}
+function findCastle(owner){for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)if(G.map[r][c].t==='castle'&&G.map[r][c].owner===owner)return[r,c];return null}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+
+function getMoves(u){
+  const cells=[];
+  for(let dr=-u.move;dr<=u.move;dr++)for(let dc=-u.move;dc<=u.move;dc++){
+    if(Math.abs(dr)+Math.abs(dc)>u.move)continue;
+    const nr=u.y+dr,nc=u.x+dc;
+    if(nr<0||nr>=ROWS||nc<0||nc>=COLS)continue;
+    const occ=unitAt(nr,nc);
+    if(occ&&!(occ.id===u.id))continue;
+    if(G.map[nr][nc].t==='M')continue;
+    cells.push([nr,nc]);
+  }
+  return cells;
+}
+function getAttacks(u){
+  return G.units.filter(e=>e.owner!==u.owner&&e.hp>0&&Math.abs(e.x-u.x)+Math.abs(e.y-u.y)<=u.range).map(e=>[e.y,e.x]);
+}
+
+// ── HUD ───────────────────────────────────────────────────────────────────────
+function updGold(){document.getElementById('gdis').textContent=Math.floor(G.gold)}
+function updTurn(){
+  document.getElementById('turn-info').innerHTML=
+    `Turn: <span style="color:${G.turn==='player'?'#4fc3f7':'#ef9a9a'}">${G.turn==='player'?'YOUR TURN':'AI TURN'}</span><br>
+    Diff: <span style="color:#ffd700">${G.diff.toUpperCase()}</span><br>
+    Your units: <span style="color:#4fc3f7">${pUnits().length}</span> | AI: <span style="color:#ef9a9a">${aUnits().length}</span><br>
+    Farmers: <span style="color:#a5d6a7">${G.farmers.length}/3</span>`;
+}
+function updSel(){
+  const s=G.selected;
+  if(!s){document.getElementById('unit-info').textContent='Click a unit to select it.';return}
+  if(s.kind==='farmer'){
+    const f=s.ref, fl=FL[f.level-1];
+    document.getElementById('unit-info').innerHTML=
+      `<b style="color:#a5d6a7">🧑‍🌾 Farmer Lv${f.level}</b><br>
+      Gold/sec: <span style="color:#ffd700">${fl.gps}</span><br>
+      ${f.level<20?`Next Lv: <span style="color:#ffd700">${FL[f.level].cost}g</span> → ${FL[f.level].gps}g/s`:'<span style="color:#ffd700">✅ MAX LEVEL!</span>'}`;
+    return;
+  }
+  const u=s.ref, b=UT[u.type];
+  document.getElementById('unit-info').innerHTML=
+    `<b style="color:${u.owner==='player'?'#4fc3f7':'#ef9a9a'}">${b.icon} ${b.name}</b><br>
+    HP:${u.hp}/${u.maxHp} ATK:${u.atk}<br>
+    Range:${u.range} Move:${u.move}<br>
+    Upg: ⚔️${u.atkUp} 🛡️${u.hpUp} 👟${u.moveUp}<br>
+    ${u.moved?'<span style="color:#666">Moved✓</span>':'<span style="color:#4caf50">Can move</span>'} ${u.attacked?'<span style="color:#666">Atk✓</span>':'<span style="color:#f44336">Can atk</span>'}`;
+}
+function addLog(msg){
+  G.log.push(msg);
+  const el=document.getElementById('log');
+  el.innerHTML=G.log.slice(-40).map(l=>`<div>${l}</div>`).join('');
+  el.scrollTop=el.scrollHeight;
+}
+function setSaveStatus(msg,col){
+  const el=document.getElementById('save-status');
+  el.style.color=col;el.textContent=msg;
+  setTimeout(()=>{el.textContent=''},2500);
+}
+function setBtns(disabled){
+  document.getElementById('etbtn').disabled=disabled;
+  document.getElementById('shop-btn').disabled=disabled;
+}
+
+// ── TRIVIA ────────────────────────────────────────────────────────────────────
+let triResolve=null;
+function askTrivia(ctx2,icon){
+  return new Promise(res=>{
+    triResolve=res;
+    const bank=TRIVIA[G.diff];
+    const q=bank[Math.floor(Math.random()*bank.length)];
+    document.getElementById('tri-ctx').textContent=ctx2||'';
+    document.getElementById('tri-icon').textContent=icon||'⚔️';
+    document.getElementById('tri-q').textContent=q.q;
+    document.getElementById('tri-res').textContent='';
+    document.getElementById('tri-cont').style.display='none';
+    const el=document.getElementById('tri-opts');el.innerHTML='';
+    q.opts.forEach((o,i)=>{
+      const b=document.createElement('button');
+      b.className='topt';b.textContent=o;
+      b.onclick=()=>answerTrivia(i,q.a,el);
+      el.appendChild(b);
+    });
+    document.getElementById('trivia-modal').classList.add('show');
+  });
+}
+function answerTrivia(chosen,correct,el){
+  el.querySelectorAll('.topt').forEach(b=>b.disabled=true);
+  el.children[correct].classList.add('tcor');
+  const ok=chosen===correct;
+  if(!ok) el.children[chosen].classList.add('twrong');
+  const res=document.getElementById('tri-res');
+  res.style.color=ok?'#4caf50':'#f44336';
+  res.textContent=ok?'✅ Correct!':'❌ Wrong! Action cancelled.';
+  document.getElementById('tri-cont').style.display='inline-block';
+  if(triResolve){triResolve(ok);triResolve=null;}
+}
+function closeTri(){document.getElementById('trivia-modal').classList.remove('show')}
+
+// ── COMBAT ────────────────────────────────────────────────────────────────────
+async function doAttack(atk,def,isPlayer){
+  let hit=true;
+  if(isPlayer) hit=await askTrivia(`${UT[atk.type].name} attacks!`,UT[atk.type].icon);
+  if(hit){
+    const dmg=atk.atk;
+    def.hp=Math.max(0,def.hp-dmg);
+    const who=isPlayer?'<span class="log-p">YOU</span>':'<span class="log-a">AI</span>';
+    addLog(`${who}: ${UT[atk.type].icon}→${UT[def.type].icon} -${dmg}hp`);
+    if(def.hp<=0){
+      addLog(`<span class="log-e">💀 ${UT[def.type].name} defeated!</span>`);
+      if(isPlayer){G.gold+=15;updGold();addLog(`<span class="log-e">💰 +15 gold bonus!</span>`);}
+    }
+  } else {
+    addLog(`<span class="log-p">YOU</span>: ❌ Wrong — attack missed!`);
+  }
+  atk.attacked=true;
+  draw();checkWin();
+}
+
+// ── CANVAS CLICK ──────────────────────────────────────────────────────────────
+cv.addEventListener('click',async e=>{
+  if(!G||G.turn!=='player'||G.aiThinking||G.gameOver)return;
+  const rect=cv.getBoundingClientRect();
+  const c=Math.floor((e.clientX-rect.left)*(540/rect.width)/TILE);
+  const r=Math.floor((e.clientY-rect.top)*(540/rect.height)/TILE);
+  if(c<0||c>=COLS||r<0||r>=ROWS)return;
+
+  const cu=unitAt(r,c);
+  const cf=pFarmerAt(r,c);
+
+  // If a unit is selected
+  if(G.selected&&G.selected.kind==='unit'){
+    const u=G.selected.ref;
+    // Move
+    if(!u.moved&&G.moves.some(([mr,mc])=>mr===r&&mc===c)&&!(r===u.y&&c===u.x)){
+      const ef=aFarmerAt(r,c);
+      if(ef){G.aiFarmers.splice(G.aiFarmers.indexOf(ef),1);addLog(`<span class="log-p">YOU</span>: 💀 Destroyed AI farmer!`);}
+      u.x=c;u.y=r;u.moved=true;
+      G.moves=[];G.attacks=getAttacks(u);
+      // castle capture check
+      const tile=G.map[r][c];
+      if(tile.t==='castle'&&tile.owner==='ai'){showWin(true,'Castle captured!');return}
+      updSel();draw();return;
+    }
+    // Attack
+    if(!u.attacked&&cu&&cu.owner==='ai'&&G.attacks.some(([ar,ac])=>ar===r&&ac===c)){
+      G.selected=null;G.moves=[];G.attacks=[];
+      setBtns(true);
+      await doAttack(u,cu,true);
+      setBtns(false);
+      if(u.hp>0){G.selected={kind:'unit',ref:u};G.moves=getMoves(u);G.attacks=getAttacks(u);}
+      updSel();draw();return;
+    }
+    // Deselect same unit
+    if(cu&&cu.id===u.id){G.selected=null;G.moves=[];G.attacks=[];updSel();draw();return}
+  }
+
+  // Select farmer
+  if(cf){G.selected={kind:'farmer',ref:cf};G.moves=[];G.attacks=[];updSel();draw();return}
+  // Select own unit
+  if(cu&&cu.owner==='player'){
+    G.selected={kind:'unit',ref:cu};
+    G.moves=cu.moved?[]:getMoves(cu);
+    G.attacks=cu.attacked?[]:getAttacks(cu);
+    updSel();draw();return;
+  }
+  // Deselect
+  G.selected=null;G.moves=[];G.attacks=[];updSel();draw();
+});
+
+// ── GOLD TICK ─────────────────────────────────────────────────────────────────
+function tickGold(){
+  if(!G||G.gameOver)return;
+  G.farmers.forEach(f=>{G.gold+=FL[f.level-1].gps});
+  G.aiFarmers.forEach(f=>{G.aiGold+=FL[f.level-1].gps});
+  updGold();
+  // AI buys units
+  if(G.turn==='player'){
+    const types=Object.keys(UT);
+    const pick=types[Math.floor(Math.random()*types.length)];
+    const cost=UT[pick].cost;
+    if(G.aiGold>=cost&&aUnits().length<8){
+      G.aiGold-=cost;
+      const cas=findCastle('ai');
+      if(cas){
+        const spots=[[cas[0],cas[1]],[cas[0],cas[1]-1],[cas[0]+1,cas[1]],[cas[0]-1,cas[1]]];
+        const free=spots.find(([rr,cc])=>rr>=0&&rr<ROWS&&cc>=0&&cc<COLS&&!unitAt(rr,cc)&&G.map[rr][cc].t!=='M');
+        if(free) G.units.push(mkUnit(pick,'ai',free[1],free[0]));
+      }
+    }
+    // AI upgrades farmer
+    if(G.aiFarmers.length>0){
+      const f=G.aiFarmers[0];
+      if(f.level<20&&G.aiGold>=FL[f.level].cost){G.aiGold-=FL[f.level].cost;f.level++;}
+    }
+  }
+}
+
+// ── END TURN ──────────────────────────────────────────────────────────────────
+function endPlayerTurn(){
+  G.selected=null;G.moves=[];G.attacks=[];
+  G.turn='ai';updTurn();setBtns(true);draw();
+  setTimeout(doAI,600);
+}
+
+// ── AI TURN ───────────────────────────────────────────────────────────────────
+async function doAI(){
+  G.aiThinking=true;
+  addLog('<span class="log-a">── AI turn ──</span>');
+  const units=[...aUnits()];
+  for(const u of units){
+    if(u.hp<=0)continue;
+    await sleep(400);
+    const targets=pUnits();
+    if(!targets.length)break;
+    const weakest=targets.sort((a,b)=>a.hp-b.hp)[0];
+    if(!u.moved){
+      const mvs=getMoves(u);
+      let best=null,bestD=9999;
+      mvs.forEach(([mr,mc])=>{const d=Math.abs(mc-weakest.x)+Math.abs(mr-weakest.y);if(d<bestD){bestD=d;best=[mr,mc]}});
+      if(best&&!(best[0]===u.y&&best[1]===u.x)){
+        const pf=pFarmerAt(best[0],best[1]);
+        if(pf){G.farmers.splice(G.farmers.indexOf(pf),1);addLog(`<span class="log-a">AI</span>: 💀 Destroyed your farmer!`);}
+        u.x=best[1];u.y=best[0];
+      }
+      u.moved=true;
+      const pc=findCastle('player');
+      if(pc&&u.x===pc[1]&&u.y===pc[0]){showWin(false,'Castle captured by AI!');return}
+    }
+    draw();await sleep(300);
+    if(!u.attacked){
+      const atks=getAttacks(u);
+      if(atks.length){const[ar,ac]=atks[0];const def=unitAt(ar,ac);if(def&&def.owner==='player')await doAttack(u,def,false);}
+    }
+    draw();
+  }
+  G.units.forEach(u=>{u.moved=false;u.attacked=false});
+  G.turn='player';G.aiThinking=false;
+  setBtns(false);updTurn();
+  addLog('<span class="log-e">── Your turn ──</span>');
+  draw();
+}
+
+// ── WIN ───────────────────────────────────────────────────────────────────────
+function checkWin(){
+  if(aUnits().length===0){showWin(true,'All enemies defeated!');return}
+  if(pUnits().length===0){showWin(false,'All your units lost!');return}
+}
+function showWin(playerWon,reason){
+  G.gameOver=true;clearInterval(goldTick);
+  document.getElementById('win-icon').textContent=playerWon?'🏆':'💀';
+  document.getElementById('win-msg').textContent=playerWon?'VICTORY!':'DEFEATED!';
+  document.getElementById('win-sub').innerHTML=reason+'<br><br>'+(playerWon?'Your kingdom prevails! Glory!':'The enemy triumphed...');
+  document.getElementById('win-modal').classList.add('show');
+}
+
+// ── SHOP ──────────────────────────────────────────────────────────────────────
+function openShop(){
+  if(!G||G.turn!=='player'||G.gameOver)return;
+  document.getElementById('shop-gold').textContent='💰 Gold: '+Math.floor(G.gold);
+  renderFarmers();renderSoldiers();renderUpgrades();
+  document.getElementById('shop-modal').classList.add('show');
+}
+function closeShop(){document.getElementById('shop-modal').classList.remove('show')}
+
+function renderFarmers(){
+  const el=document.getElementById('sf');el.innerHTML='';
+  const grid=document.createElement('div');grid.className='sgrid';
+  // Buy farmer
+  const canBuy=G.farmers.length<3&&G.gold>=40;
+  const bc=document.createElement('div');bc.className='sitem'+(canBuy?'':' sdis');
+  bc.innerHTML=`<span class="sicon">🧑‍🌾</span><span class="sname">Buy Farmer</span><span class="scost">40g + answer</span><span class="sdesc">${G.farmers.length}/3 owned<br>Starts Lv1 (1g/s)</span>`;
+  if(canBuy)bc.onclick=()=>buyFarmer();
+  grid.appendChild(bc);
+  // Upgrade farmers
+  G.farmers.forEach((f,i)=>{
+    const canUp=f.level<20&&G.gold>=FL[f.level].cost;
+    const d=document.createElement('div');d.className='sitem'+(canUp?'':' sdis');
+    const rows=FL.map((lv,idx)=>{
+      const cur=idx+1===f.level,past=idx+1<f.level;
+      const col=cur?'#ffd700':past?'#555':'#aaa';
+      const mark=cur?' ◀':past?' ✓':'';
+      return`<span style="color:${col};font-size:5.5px;display:block">Lv${idx+1}:${lv.gps}g/s${idx>0?' ('+lv.cost+'g)':''}${mark}</span>`;
+    }).join('');
+    d.innerHTML=`<span class="sicon">🌾</span>
+      <span class="sname">Farmer ${i+1}</span>
+      <span class="scost">${f.level<20?FL[f.level].cost+'g + answer':'✅ MAX'}</span>
+      <span class="sdesc">Lv${f.level}→${f.level<20?'Lv'+(f.level+1):'MAX'} | Now:<span style="color:#ffd700">${FL[f.level-1].gps}g/s</span>${f.level<20?' → <span style="color:#a5d6a7">'+FL[f.level].gps+'g/s</span>':''}<br><div style="max-height:80px;overflow-y:auto;margin-top:3px">${rows}</div></span>`;
+    if(canUp)d.onclick=()=>upgFarmer(i);
+    grid.appendChild(d);
+  });
+  el.appendChild(grid);
+}
+
+function renderSoldiers(){
+  const el=document.getElementById('ss');el.innerHTML='';
+  Object.entries(UT).forEach(([type,b])=>{
+    const can=G.gold>=b.cost;
+    const d=document.createElement('div');d.className='sitem'+(can?'':' sdis');
+    d.innerHTML=`<span class="sicon">${b.icon}</span><span class="sname">${b.name}</span><span class="scost">${b.cost}g + answer</span><span class="sdesc">HP:${b.hp} ATK:${b.atk} Mv:${b.move}</span>`;
+    if(can)d.onclick=()=>buySoldier(type);
+    el.appendChild(d);
+  });
+}
+
+function renderUpgrades(){
+  const sec=document.getElementById('su-sec');
+  const sel=G.selected&&G.selected.kind==='unit'&&G.selected.ref.owner==='player'?G.selected.ref:null;
+  if(!sel){sec.style.display='none';return}
+  sec.style.display='block';
+  const el=document.getElementById('su');el.innerHTML='';
+  [
+    {icon:'⚔️',name:'Attack +3',cost:30,upk:'atkUp',apply:u=>{u.atk+=3;u.atkUp++;}},
+    {icon:'🛡️',name:'HP +10',cost:25,upk:'hpUp',apply:u=>{u.maxHp+=10;u.hp+=10;u.hpUp++;}},
+    {icon:'👟',name:'Move +1',cost:35,upk:'moveUp',apply:u=>{u.move++;u.moveUp++;}},
+  ].forEach(up=>{
+    const can=sel[up.upk]<3&&G.gold>=up.cost;
+    const d=document.createElement('div');d.className='sitem'+(can?'':' sdis');
+    d.innerHTML=`<span class="sicon">${up.icon}</span><span class="sname">${up.name}</span><span class="scost">${up.cost}g + answer</span><span class="sdesc">${sel[up.upk]}/3 upgrades done</span>`;
+    if(can)d.onclick=()=>doUpgrade(up);
+    el.appendChild(d);
+  });
+}
+
+async function buyFarmer(){
+  closeShop();
+  const ok=await askTrivia('Buy a new Farmer?','🧑‍🌾');
+  if(!ok){addLog('<span class="log-e">❌ Wrong — farmer not bought.</span>');openShop();return}
+  if(G.gold<40||G.farmers.length>=3){openShop();return}
+  const cas=findCastle('player');if(!cas){openShop();return}
+  const spots=[[cas[0],cas[1]+1],[cas[0]+1,cas[1]],[cas[0]-1,cas[1]],[cas[0],cas[1]-1],[cas[0]+1,cas[1]+1],[cas[0]-1,cas[1]+1]];
+  const free=spots.find(([rr,cc])=>rr>=0&&rr<ROWS&&cc>=0&&cc<COLS&&!unitAt(rr,cc)&&!pFarmerAt(rr,cc)&&G.map[rr][cc].t!=='M'&&G.map[rr][cc].t!=='castle');
+  if(!free){addLog('<span class="log-e">❌ No space for farmer!</span>');openShop();return}
+  G.gold-=40;G.farmers.push(mkFarmer('player',free[1],free[0],1));
+  addLog(`<span class="log-e">🧑‍🌾 New farmer hired! (${G.farmers.length}/3)</span>`);
+  updGold();draw();openShop();
+}
+
+async function upgFarmer(i){
+  closeShop();
+  const f=G.farmers[i];
+  if(!f||f.level>=20){openShop();return}
+  const cost=FL[f.level].cost;
+  if(G.gold<cost){addLog('<span class="log-e">❌ Not enough gold!</span>');openShop();return}
+  const ok=await askTrivia(`Upgrade Farmer to Lv${f.level+1}?`,'🌾');
+  if(!ok){addLog('<span class="log-e">❌ Wrong — upgrade cancelled.</span>');openShop();return}
+  G.gold-=cost;f.level++;
+  addLog(`<span class="log-e">🌾 Farmer upgraded to Lv${f.level}! (${FL[f.level-1].gps}g/s)</span>`);
+  updGold();draw();openShop();
+}
+
+async function buySoldier(type){
+  closeShop();
+  const b=UT[type];
+  if(G.gold<b.cost){addLog('<span class="log-e">❌ Not enough gold!</span>');openShop();return}
+  const ok=await askTrivia(`Buy a ${b.name}?`,b.icon);
+  if(!ok){addLog('<span class="log-e">❌ Wrong — purchase cancelled.</span>');openShop();return}
+  const cas=findCastle('player');if(!cas){openShop();return}
+  const spots=[[cas[0],cas[1]],[cas[0],cas[1]+1],[cas[0]+1,cas[1]],[cas[0]-1,cas[1]],[cas[0],cas[1]-1],[cas[0]+1,cas[1]+1],[cas[0]-1,cas[1]+1],[cas[0]+1,cas[1]-1]];
+  const free=spots.find(([rr,cc])=>rr>=0&&rr<ROWS&&cc>=0&&cc<COLS&&!unitAt(rr,cc)&&!pFarmerAt(rr,cc)&&G.map[rr][cc].t!=='M');
+  if(!free){addLog('<span class="log-e">❌ No spawn space near castle!</span>');openShop();return}
+  G.gold-=b.cost;G.units.push(mkUnit(type,'player',free[1],free[0]));
+  addLog(`<span class="log-e">${b.icon} ${b.name} recruited!</span>`);
+  updGold();draw();openShop();
+}
+
+async function doUpgrade(up){
+  closeShop();
+  const sel=G.selected&&G.selected.kind==='unit'?G.selected.ref:null;
+  if(!sel){openShop();return}
+  if(G.gold<up.cost){addLog('<span class="log-e">❌ Not enough gold!</span>');openShop();return}
+  const ok=await askTrivia(`Upgrade ${UT[sel.type].name}: ${up.name}?`,up.icon);
+  if(!ok){addLog('<span class="log-e">❌ Wrong — upgrade cancelled.</span>');openShop();return}
+  G.gold-=up.cost;up.apply(sel);
+  addLog(`<span class="log-e">${up.icon} ${UT[sel.type].name}: ${up.name} done!</span>`);
+  updGold();updSel();draw();openShop();
+}
+
+// ── SAVE / LOAD ───────────────────────────────────────────────────────────────
+async function saveGame(){
+  if(!G||G.gameOver)return;
+  const data={
+    diff:G.diff,turn:G.turn,gold:G.gold,aiGold:G.aiGold,
+    units:G.units.map(u=>({...u})),
+    farmers:G.farmers.map(f=>({...f})),
+    aiFarmers:G.aiFarmers.map(f=>({...f})),
+    map:G.map.map(row=>row.map(t=>({...t}))),
+    log:G.log.slice(-20),uid,fid
+  };
+  try{
+    const r=await window.storage.set('kq_save',JSON.stringify(data));
+    setSaveStatus(r?'💾 Saved!':'❌ Save failed','#a5d6a7');
+  }catch(e){setSaveStatus('❌ Save failed','#f44336')}
+}
+
+async function loadGame(fromTitle=false){
+  try{
+    const r=await window.storage.get('kq_save');
+    if(!r||!r.value){
+      if(fromTitle)alert('No saved game found!\nStart a new game first.');
+      else setSaveStatus('❌ No save found','#f44336');
+      return;
+    }
+    const d=JSON.parse(r.value);
+    clearInterval(goldTick);
+    uid=d.uid||0;fid=d.fid||0;
+    G={
+      diff:d.diff,turn:d.turn,
+      selected:null,moves:[],attacks:[],
+      units:d.units,farmers:d.farmers,aiFarmers:d.aiFarmers,
+      gold:d.gold,aiGold:d.aiGold,
+      map:d.map,log:d.log||[],
+      aiThinking:false,gameOver:false
+    };
+    showGameScreen();
+    G.log.forEach(l=>addLog(l));
+    addLog('<span class="log-e">📂 Game loaded! Welcome back!</span>');
+    goldTick=setInterval(tickGold,1000);
+    updGold();updTurn();draw();
+    if(!fromTitle)setSaveStatus('📂 Loaded!','#ce93d8');
+  }catch(e){
+    if(fromTitle)alert('Failed to load. Start a new game.');
+    else setSaveStatus('❌ Load failed','#f44336');
+  }
+}
+
+function showGameScreen(){
+  document.getElementById('title-screen').classList.remove('active');
+  const gs=document.getElementById('game-screen');
+  gs.style.display='grid';gs.classList.add('active');
+}
+
+// ── START ─────────────────────────────────────────────────────────────────────
+function startGame(diff){
+  clearInterval(goldTick);
+  uid=0;fid=0;
+  G=freshState(diff);
+  G.map[7][0]={t:'castle',owner:'player'};
+  G.map[1][8]={t:'castle',owner:'ai'};
+  G.units.push(mkUnit('warrior','player',1,7));
+  G.units.push(mkUnit('warrior','player',1,6));
+  G.units.push(mkUnit('archer','player',2,7));
+  G.units.push(mkUnit('warrior','ai',7,1));
+  G.units.push(mkUnit('warrior','ai',7,2));
+  G.units.push(mkUnit('archer','ai',6,1));
+  G.farmers.push(mkFarmer('player',0,6,1));
+  G.aiFarmers.push(mkFarmer('ai',8,2,1));
+  showGameScreen();
+  updGold();updTurn();
+  addLog('<span class="log-e">⚔️ Battle begins! Grow your farm &amp; army!</span>');
+  addLog('<span class="log-e">🧑‍🌾 2 Warriors, 1 Archer &amp; 1 Farmer to start.</span>');
+  goldTick=setInterval(tickGold,1000);
+  draw();
+}
+</script>
+</body>
+</html>
